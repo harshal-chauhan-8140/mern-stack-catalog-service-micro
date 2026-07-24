@@ -19,20 +19,16 @@ export class CategoryController {
 
         const { name, priceConfiguration, attributes } = req.body as Category;
 
-        try {
-            this.logger.info("Request to create a category", { name });
+        this.logger.info("Request to create a category", { name });
 
-            const category = await this.categoryService.create({
-                name,
-                priceConfiguration,
-                attributes,
-            });
+        const category = await this.categoryService.create({
+            name,
+            priceConfiguration,
+            attributes,
+        });
 
-            this.logger.info("Category has been created", { id: category._id });
+        this.logger.info("Category has been created", { id: category._id });
 
-            res.status(201).json({ id: category._id });
-        } catch (err) {
-            next(err);
-        }
+        res.status(201).json({ id: category._id });
     }
 }
