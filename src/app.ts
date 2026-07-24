@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import cookieParser from "cookie-parser";
 import { globalErrorHandler } from "./common/middlewares/globalErrorHandler";
 import config from "config";
 import categoryRouter from "./category/category-router";
@@ -6,6 +7,7 @@ import categoryRouter from "./category/category-router";
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req: Request, res: Response) => {
     res.json({ port: config.get("server.port") });
