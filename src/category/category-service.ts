@@ -19,4 +19,28 @@ export class CategoryService {
 
         return savedCategory;
     }
+
+    async findAll() {
+        return await CategoryModel.find();
+    }
+
+    async findById(id: string) {
+        return await CategoryModel.findById(id);
+    }
+
+    async update(id: string, category: Partial<Category>) {
+        this.logger.info("Updating category in the database", { id });
+
+        return await CategoryModel.findByIdAndUpdate(
+            id,
+            { $set: category },
+            { new: true },
+        );
+    }
+
+    async deleteById(id: string) {
+        this.logger.info("Deleting category from the database", { id });
+
+        return await CategoryModel.findByIdAndDelete(id);
+    }
 }

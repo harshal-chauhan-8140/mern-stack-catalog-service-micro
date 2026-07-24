@@ -1,64 +1,28 @@
 import request from "supertest";
-import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../../src/app";
 import Category from "../../src/category/category-model";
 import { getAccessToken } from "../utils/auth";
+import { useInMemoryDatabase } from "../utils/db";
+import { makeCategory } from "../utils/fixtures";
 
 describe("POST /categories", () => {
-    let mongoServer: MongoMemoryServer;
     let adminToken: string;
     let customerToken: string;
 
-    const validCategory = {
-        name: "Pizza",
-        priceConfiguration: {
-            Size: {
-                priceType: "base",
-                availableOptions: ["Small", "Medium", "Large"],
-            },
-            Crust: {
-                priceType: "aditional",
-                availableOptions: ["Thin", "Thick"],
-            },
-        },
-        attributes: [
-            {
-                name: "isHit",
-                widgetType: "switch",
-                defaultValue: "No",
-                availableOptions: ["Yes", "No"],
-            },
-            {
-                name: "Spiciness",
-                widgetType: "radio",
-                defaultValue: "Medium",
-                availableOptions: ["Less", "Medium", "Hot"],
-            },
-        ],
-    };
+    const validCategory = makeCategory();
+
+    useInMemoryDatabase();
+
+    beforeAll(async () => {
+        adminToken = await getAccessToken("adminUser");
+        customerToken = await getAccessToken("customerUser");
+    });
 
     const createCategory = (payload: object, token = adminToken) =>
         request(app)
             .post("/categories")
             .set("Authorization", `Bearer ${token}`)
             .send(payload);
-
-    beforeAll(async () => {
-        adminToken = await getAccessToken("adminUser");
-        customerToken = await getAccessToken("customerUser");
-        mongoServer = await MongoMemoryServer.create();
-        await mongoose.connect(mongoServer.getUri());
-    }, 120000);
-
-    beforeEach(async () => {
-        await mongoose.connection.dropDatabase();
-    });
-
-    afterAll(async () => {
-        await mongoose.disconnect();
-        await mongoServer.stop();
-    });
 
     describe("given all fields", () => {
         it("should return a 201 status code", async () => {
