@@ -1,19 +1,13 @@
 import request from "supertest";
 import config from "config";
 
-/**
- * Logs into the running auth-service and returns its access token.
- *
- * The catalog service verifies tokens against that service's JWKS endpoint, so
- * the token has to be signed by it — a hand-made one won't pass `authenticate`.
- * This means auth-service (and its database) must be up for these tests.
- */
-export async function getAccessToken(): Promise<string> {
-    const serviceUri = config.get("auth.serviceUri") as string;
-    const credentials = config.get("auth.testUser") as {
-        email: string;
-        password: string;
-    };
+type TestUser = "adminUser" | "customerUser";
+
+export async function getAccessToken(user: TestUser): Promise<string> {
+    const serviceUri = config.get<string>("auth.serviceUri");
+    const credentials = config.get<{ email: string; password: string }>(
+        `auth.${user}`,
+    );
 
     let response: request.Response;
     try {
@@ -35,7 +29,6 @@ export async function getAccessToken(): Promise<string> {
         );
     }
 
-    // superagent types set-cookie as a string, but it is an array at runtime.
     const cookies = (response.headers["set-cookie"] ??
         []) as unknown as string[];
 

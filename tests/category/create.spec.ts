@@ -7,7 +7,8 @@ import { getAccessToken } from "../utils/auth";
 
 describe("POST /categories", () => {
     let mongoServer: MongoMemoryServer;
-    let accessToken: string;
+    let adminToken: string;
+    let customerToken: string;
 
     const validCategory = {
         name: "Pizza",
@@ -37,14 +38,15 @@ describe("POST /categories", () => {
         ],
     };
 
-    const createCategory = (payload: object) =>
+    const createCategory = (payload: object, token = adminToken) =>
         request(app)
             .post("/categories")
-            .set("Authorization", `Bearer ${accessToken}`)
+            .set("Authorization", `Bearer ${token}`)
             .send(payload);
 
     beforeAll(async () => {
-        accessToken = await getAccessToken();
+        adminToken = await getAccessToken("adminUser");
+        customerToken = await getAccessToken("customerUser");
         mongoServer = await MongoMemoryServer.create();
         await mongoose.connect(mongoServer.getUri());
     }, 120000);
@@ -114,6 +116,21 @@ describe("POST /categories", () => {
 
             const categories = await Category.find();
             expect(response.body.id).toBe(categories[0]._id.toString());
+        });
+    });
+
+    describe("given a token without the admin role", () => {
+        it("should return 403", async () => {
+            const response = await createCategory(validCategory, customerToken);
+
+            expect(response.statusCode).toBe(403);
+        });
+
+        it("should not persist the category", async () => {
+            await createCategory(validCategory, customerToken);
+
+            const categories = await Category.find();
+            expect(categories).toHaveLength(0);
         });
     });
 
