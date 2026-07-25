@@ -1,5 +1,5 @@
-/* eslint-env node */
 module.exports = {
+    env: { node: true },
     extends: [
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended-type-checked",
@@ -16,6 +16,10 @@ module.exports = {
         "no-console": "error",
         "dot-notation": "error",
         "@typescript-eslint/require-await": "off",
+        "@typescript-eslint/no-unused-vars": [
+            "error",
+            { argsIgnorePattern: "^_" },
+        ],
         "@typescript-eslint/no-misused-promises": [
             "error",
             { checksVoidReturn: { arguments: false } },

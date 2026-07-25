@@ -34,7 +34,7 @@ export class CategoryService {
         return await CategoryModel.findByIdAndUpdate(
             id,
             { $set: category },
-            { new: true },
+            { returnDocument: "after" },
         );
     }
 

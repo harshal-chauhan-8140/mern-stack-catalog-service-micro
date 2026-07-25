@@ -46,8 +46,6 @@ export class CategoryController {
             return next(createHttpError(404, "Category not found"));
         }
 
-        // $set replaces priceConfiguration wholesale, so merge it with what is
-        // already stored — otherwise updating one key drops the others.
         if (updateData.priceConfiguration) {
             const existingConfig: PriceConfiguration =
                 existingCategory.priceConfiguration instanceof Map

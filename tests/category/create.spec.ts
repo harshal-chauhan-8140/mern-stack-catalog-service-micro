@@ -62,7 +62,6 @@ describe("POST /categories", () => {
             expect(category.name).toBe("Pizza");
             expect(category.attributes).toHaveLength(2);
 
-            // priceConfiguration is stored as a Mongoose Map at runtime.
             const priceConfiguration =
                 category.priceConfiguration as unknown as Map<
                     string,

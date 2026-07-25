@@ -91,12 +91,10 @@ describe("PATCH /categories/:id", () => {
                     { priceType: string; availableOptions: string[] }
                 >;
 
-            // Size was replaced...
             expect(priceConfiguration.get("Size")?.availableOptions).toEqual([
                 "Small",
                 "Large",
             ]);
-            // ...and Crust, which was not sent, survived.
             expect(priceConfiguration.get("Crust")?.availableOptions).toEqual([
                 "Thin",
                 "Thick",

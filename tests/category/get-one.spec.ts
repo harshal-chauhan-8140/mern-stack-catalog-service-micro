@@ -12,7 +12,6 @@ describe("GET /categories/:id", () => {
         return category._id.toString();
     };
 
-    // No token is set on any of these — the endpoint is deliberately public.
     const getCategory = (id: string) => request(app).get(`/categories/${id}`);
 
     describe("given an existing category", () => {

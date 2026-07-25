@@ -7,7 +7,6 @@ import { makeCategory } from "../utils/fixtures";
 describe("GET /categories", () => {
     useInMemoryDatabase();
 
-    // No token is set on any of these — the endpoint is deliberately public.
     const listCategories = () => request(app).get("/categories");
 
     it("should return a 200 status code without a token", async () => {
