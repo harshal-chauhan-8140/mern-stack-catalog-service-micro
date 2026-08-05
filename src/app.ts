@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import { globalErrorHandler } from "./common/middlewares/globalErrorHandler";
-import config from "config";
+import { config } from "./config";
 import categoryRouter from "./category/category-router";
 import productRouter from "./product/product-router";
 
@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.get("/", (req: Request, res: Response) => {
-    res.json({ port: config.get("server.port") });
+    res.json({ port: config.PORT });
 });
 
 app.use("/categories", categoryRouter);

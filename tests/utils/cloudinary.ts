@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
-import config from "config";
+import { config } from "../../src/config";
 
 export interface CloudinaryAsset {
     public_id: string;
@@ -12,9 +12,9 @@ export interface CloudinaryAsset {
 
 function client() {
     cloudinary.config({
-        cloud_name: config.get<string>("storageBucket.cloudName"),
-        api_key: config.get<string>("storageBucket.apiKey"),
-        api_secret: config.get<string>("storageBucket.apiSecret"),
+        cloud_name: config.CLOUDINARY_CLOUD_NAME,
+        api_key: config.CLOUDINARY_API_KEY,
+        api_secret: config.CLOUDINARY_API_SECRET,
         secure: true,
     });
 
@@ -22,7 +22,7 @@ function client() {
 }
 
 export function testFolder(): string {
-    const folder = config.get<string>("storageBucket.folder");
+    const folder = config.CLOUDINARY_FOLDER;
 
     if (!folder.split("/").includes("test")) {
         throw new Error(

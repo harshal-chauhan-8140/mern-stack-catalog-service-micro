@@ -1,10 +1,10 @@
 import app from "./app";
 import { initDb } from "./config/db";
 import logger from "./config/logger";
-import config from "config";
+import { config } from "./config";
 
 const startServer = async () => {
-    const PORT: number = config.get("server.port");
+    const PORT = config.PORT;
     try {
         await initDb();
         logger.info("Database connected successfully.");

@@ -1,13 +1,15 @@
 import request from "supertest";
-import config from "config";
+import { requireEnv } from "../../src/config";
 
 type TestUser = "adminUser" | "customerUser";
 
 export async function getAccessToken(user: TestUser): Promise<string> {
-    const serviceUri = config.get<string>("auth.serviceUri");
-    const credentials = config.get<{ email: string; password: string }>(
-        `auth.${user}`,
-    );
+    const serviceUri = requireEnv("AUTH_SERVICE_URI");
+    const prefix = user === "adminUser" ? "ADMIN" : "CUSTOMER";
+    const credentials = {
+        email: requireEnv(`${prefix}_EMAIL`),
+        password: requireEnv(`${prefix}_PASSWORD`),
+    };
 
     let response: request.Response;
     try {
