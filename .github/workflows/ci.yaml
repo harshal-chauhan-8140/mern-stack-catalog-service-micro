@@ -1,0 +1,173 @@
+name: CI
+on:
+    pull_request:
+        branches:
+            - main
+    push:
+        branches:
+            - main
+
+jobs:
+    build-and-test:
+        name: Build The Project
+        runs-on: ubuntu-latest
+
+        env:
+            AUTH_IMAGE: harshalchauhan8140/mernstack_auth_service:build-24
+            AUTH_PORT: 5501
+            DB_USERNAME: root
+            DB_PASSWORD: root
+            AUTH_DB_NAME: mernstack_auth_service_production
+            ADMIN_EMAIL: admin@gmail.com
+            ADMIN_PASSWORD: "1234567890"
+            CUSTOMER_EMAIL: catalog-test@example.com
+            CUSTOMER_PASSWORD: Test@12345
+
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_USER: root
+                    POSTGRES_PASSWORD: root
+                    POSTGRES_DB: mernstack_auth_service_production
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run Eslint
+              run: npm run lint
+
+            - name: Pull auth service image
+              run: docker pull "$AUTH_IMAGE"
+
+            - name: Run auth service migrations
+              run: |
+                  docker run --rm --network host \
+                    -e NODE_ENV=production \
+                    -e DB_HOST=127.0.0.1 \
+                    -e DB_PORT=5432 \
+                    -e DB_USERNAME="$DB_USERNAME" \
+                    -e DB_PASSWORD="$DB_PASSWORD" \
+                    -e DB_NAME="$AUTH_DB_NAME" \
+                    -e PORT="$AUTH_PORT" \
+                    -e JWKS_URI="http://localhost:${AUTH_PORT}/.well-known/jwks.json" \
+                    -e REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}" \
+                    -e PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}" \
+                    -e PUBLIC_KEY="${{ secrets.PUBLIC_KEY }}" \
+                    -e ADMIN_FIRST_NAME=Super \
+                    -e ADMIN_LAST_NAME=Admin \
+                    -e ADMIN_EMAIL="$ADMIN_EMAIL" \
+                    -e ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+                    "$AUTH_IMAGE" \
+                    node /app/node_modules/typeorm/cli.js migration:run -d /app/config/data-source.js
+
+            - name: Start auth service
+              run: |
+                  docker run -d --name auth-service --network host \
+                    -e NODE_ENV=production \
+                    -e PORT="$AUTH_PORT" \
+                    -e DB_HOST=127.0.0.1 \
+                    -e DB_PORT=5432 \
+                    -e DB_USERNAME="$DB_USERNAME" \
+                    -e DB_PASSWORD="$DB_PASSWORD" \
+                    -e DB_NAME="$AUTH_DB_NAME" \
+                    -e JWKS_URI="http://localhost:${AUTH_PORT}/.well-known/jwks.json" \
+                    -e REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}" \
+                    -e PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}" \
+                    -e PUBLIC_KEY="${{ secrets.PUBLIC_KEY }}" \
+                    -e ADMIN_FIRST_NAME=Super \
+                    -e ADMIN_LAST_NAME=Admin \
+                    -e ADMIN_EMAIL="$ADMIN_EMAIL" \
+                    -e ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+                    "$AUTH_IMAGE"
+
+            - name: Wait for auth service
+              run: |
+                  for i in $(seq 1 30); do
+                    if curl -sf "http://localhost:${AUTH_PORT}/" > /dev/null; then
+                      echo "Auth service is up"
+                      exit 0
+                    fi
+                    echo "Waiting for auth service... ($i/30)"
+                    sleep 2
+                  done
+                  echo "Auth service did not become ready in time."
+                  docker logs auth-service
+                  exit 1
+
+            - name: Create the customer test user
+              run: |
+                  curl -fsS -X POST "http://localhost:${AUTH_PORT}/auth/register" \
+                    -H 'Content-Type: application/json' \
+                    -d "{\"firstName\":\"Catalog\",\"lastName\":\"Tester\",\"email\":\"${CUSTOMER_EMAIL}\",\"password\":\"${CUSTOMER_PASSWORD}\"}"
+
+            - name: Create .env.test
+              env:
+                  CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+                  CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+                  CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+              run: |
+                  cat > .env.test <<EOF
+                  PORT=5502
+                  NODE_ENV=test
+                  DB_URL=mongodb://localhost:27017/catalog-test
+                  JWKS_URI=http://localhost:${AUTH_PORT}/.well-known/jwks.json
+                  CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+                  CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+                  CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+                  CLOUDINARY_FOLDER=products/test
+                  AUTH_SERVICE_URI=http://localhost:${AUTH_PORT}
+                  ADMIN_EMAIL=${ADMIN_EMAIL}
+                  ADMIN_PASSWORD=${ADMIN_PASSWORD}
+                  CUSTOMER_EMAIL=${CUSTOMER_EMAIL}
+                  CUSTOMER_PASSWORD=${CUSTOMER_PASSWORD}
+                  EOF
+
+            - name: Test And Coverage
+              run: npm test
+
+            - name: Build-ts
+              run: npm run build
+
+            - name: Auth service logs
+              if: failure()
+              run: docker logs auth-service || true
+
+    build-and-push-docker:
+        name: Build And Push Docker Image
+        needs: build-and-test
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+            IMAGE_NAME: mernstack_catalog_service
+            IMAGE_TAG: build-${{ github.run_number }}
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+
+            - name: Log Into Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+            - name: Build Docker Image
+              run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f docker/prod/Dockerfile .
+
+            - name: Push Docker Image To Docker Hub
+              run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
