@@ -28,6 +28,12 @@ export interface Product {
     isPublish?: boolean;
 }
 
+export enum ProductEvents {
+    PRODUCT_CREATE = "PRODUCT_CREATE",
+    PRODUCT_UPDATE = "PRODUCT_UPDATE",
+    PRODUCT_DELETE = "PRODUCT_DELETE",
+}
+
 export interface ProductRequestBody {
     name: string;
     description: string;

@@ -24,4 +24,5 @@ export const config = {
     CLOUDINARY_FOLDER: requireEnv("CLOUDINARY_FOLDER"),
     KAFKA_BROKER: requireEnv("KAFKA_BROKER"),
     BROKER_TOPIC_PRODUCT: requireEnv("BROKER_TOPIC_PRODUCT"),
+    BROKER_TOPIC_TOPPING: requireEnv("BROKER_TOPIC_TOPPING"),
 };

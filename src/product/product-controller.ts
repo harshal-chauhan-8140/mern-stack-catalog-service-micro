@@ -2,11 +2,11 @@ import type { NextFunction, Request, Response } from "express";
 import type { UploadedFile } from "express-fileupload";
 import { validationResult } from "express-validator";
 import createHttpError from "http-errors";
-import mongoose from "mongoose";
+import mongoose, { HydratedDocument } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "winston";
 import { ProductService } from "./product-service";
-import { Product, ProductRequestBody } from "./product-types";
+import { Product, ProductEvents, ProductRequestBody } from "./product-types";
 import { FileStorage } from "../common/types/storage";
 import { AuthRequest } from "../common/types";
 import { Roles } from "../config/constants";
@@ -43,13 +43,7 @@ export class ProductController {
 
         this.logger.info("Product has been created", { id: newProduct._id });
 
-        await this.broker.sendMessage(
-            config.BROKER_TOPIC_PRODUCT,
-            JSON.stringify({
-                id: newProduct._id,
-                priceConfiguration: newProduct.toJSON().priceConfiguration,
-            }),
-        );
+        await this.sendProductEvent(ProductEvents.PRODUCT_CREATE, newProduct);
 
         res.status(201).json({ id: newProduct._id });
     }
@@ -105,15 +99,28 @@ export class ProductController {
 
         this.logger.info("Product has been updated", { id: productId });
 
-        await this.broker.sendMessage(
-            config.BROKER_TOPIC_PRODUCT,
-            JSON.stringify({
-                id: updatedProduct._id,
-                priceConfiguration: updatedProduct.toJSON().priceConfiguration,
-            }),
+        await this.sendProductEvent(
+            ProductEvents.PRODUCT_UPDATE,
+            updatedProduct,
         );
 
         res.json({ id: updatedProduct._id });
+    }
+
+    private async sendProductEvent(
+        event_type: ProductEvents,
+        product: HydratedDocument<Product>,
+    ) {
+        await this.broker.sendMessage(
+            config.BROKER_TOPIC_PRODUCT,
+            JSON.stringify({
+                event_type,
+                data: {
+                    id: product._id,
+                    priceConfiguration: product.toJSON().priceConfiguration,
+                },
+            }),
+        );
     }
 
     private toProduct(body: ProductRequestBody, image: string): Product {
