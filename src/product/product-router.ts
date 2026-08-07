@@ -11,14 +11,17 @@ import { ProductController } from "./product-controller";
 import { ProductService } from "./product-service";
 import createProductValidator from "./create-product-validator";
 import updateProductValidator from "./update-product-validator";
+import { createMessageProducerBroker } from "../common/factories/brokerFactory";
 
 const router = express.Router();
 
 const productService = new ProductService(logger);
+const broker = createMessageProducerBroker();
 const storage = new CloudinaryStorage();
 const productController = new ProductController(
     productService,
     storage,
+    broker,
     logger,
 );
 

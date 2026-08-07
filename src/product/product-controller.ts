@@ -10,11 +10,14 @@ import { Product, ProductRequestBody } from "./product-types";
 import { FileStorage } from "../common/types/storage";
 import { AuthRequest } from "../common/types";
 import { Roles } from "../config/constants";
+import { MessageProducerBroker } from "../common/types/broker";
+import { config } from "../config";
 
 export class ProductController {
     constructor(
         private productService: ProductService,
         private storage: FileStorage,
+        private broker: MessageProducerBroker,
         private logger: Logger,
     ) {}
 
@@ -39,6 +42,14 @@ export class ProductController {
         const newProduct = await this.productService.create(product);
 
         this.logger.info("Product has been created", { id: newProduct._id });
+
+        await this.broker.sendMessage(
+            config.BROKER_TOPIC_PRODUCT,
+            JSON.stringify({
+                id: newProduct._id,
+                priceConfiguration: newProduct.toJSON().priceConfiguration,
+            }),
+        );
 
         res.status(201).json({ id: newProduct._id });
     }
@@ -88,9 +99,21 @@ export class ProductController {
             this.toProduct(body, imageName),
         );
 
+        if (!updatedProduct) {
+            return next(createHttpError(404, "Product not found"));
+        }
+
         this.logger.info("Product has been updated", { id: productId });
 
-        res.json({ id: updatedProduct?._id });
+        await this.broker.sendMessage(
+            config.BROKER_TOPIC_PRODUCT,
+            JSON.stringify({
+                id: updatedProduct._id,
+                priceConfiguration: updatedProduct.toJSON().priceConfiguration,
+            }),
+        );
+
+        res.json({ id: updatedProduct._id });
     }
 
     private toProduct(body: ProductRequestBody, image: string): Product {
